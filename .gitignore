@@ -3,6 +3,8 @@
 .edge-*/
 *.log
 
+data/
+
 # Large intermediate/build data: the published single-file map embeds all of it.
 data/raw/
 data/out/
