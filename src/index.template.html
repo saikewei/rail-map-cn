@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#dae6e3">
+<title>全国客运铁路运营图 · 中国铁路客运线路地图</title>
+<meta name="description" content="全国国家铁路客运线路交互地图：以运营时速着色，标注线路名称、车站与线路档案。数据来自中国铁路12306、OpenStreetMap与国家铁路局公开资料。">
+<style>
+/*__MAPLIBRE_CSS__*/
+</style>
+<style>
+/*__ATLAS_CSS__*/
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map" role="application" aria-label="中国客运铁路交互地图"></div>
+  <div class="map-shade" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <svg id="lineLabelLayer" aria-hidden="true"></svg>
+  <svg id="waterLabelLayer" aria-hidden="true"></svg>
+
+  <aside class="panel" id="panel" aria-label="地图控制与目录">
+    <div class="panel-scroll">
+      <header class="masthead">
+        <div class="masthead-meta">
+          <span class="eyebrow"><span class="dot"></span>CHINA PASSENGER RAIL ATLAS</span>
+          <span class="issue">Nº 01 / 2026</span>
+          <button class="panel-collapse" id="panelCollapse" type="button" aria-label="收起面板" aria-expanded="true" title="收起面板">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6 8.5 12l6 6"></path></svg>
+          </button>
+        </div>
+        <div class="title-row">
+          <h1>全国客运铁路<br><span class="title-accent">运营速览</span></h1>
+          <div class="seal" aria-hidden="true"><span>客</span><span>运</span><span>铁</span><span>路</span></div>
+        </div>
+        <p class="dek">从时速 350 公里的高速动脉，到穿山越岭的客货共线。以颜色标度速度，以节点索引中国。</p>
+        <div class="stat-row">
+          <div class="stat"><b id="statLines">—</b><span>条线路</span></div>
+          <div class="stat"><b id="statStations">—</b><span>座车站</span></div>
+          <div class="stat"><b id="statCities">—</b><span>座城市</span></div>
+        </div>
+      </header>
+
+      <div class="search-wrap" id="searchWrap">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.8"></circle><path d="M15.6 15.6 21 21"></path></svg>
+          <input id="searchInput" type="text" placeholder="搜索线路、车站或拼音" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="searchResults">
+          <button class="search-clear" id="searchClear" aria-label="清除搜索"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          <kbd>/</kbd>
+        </div>
+        <div class="search-results" id="searchResults" role="listbox"></div>
+      </div>
+
+      <nav class="tabs" role="tablist" aria-label="面板切换">
+        <button class="tab active" id="tab-btn-overview" role="tab" aria-selected="true" aria-controls="tab-overview" data-tab="overview">速览<span class="tab-count">01</span></button>
+        <button class="tab" id="tab-btn-lines" role="tab" aria-selected="false" aria-controls="tab-lines" data-tab="lines">线路目录<span class="tab-count" id="lineCountTab"></span></button>
+        <button class="tab" id="tab-btn-stations" role="tab" aria-selected="false" aria-controls="tab-stations" data-tab="stations">车站索引<span class="tab-count">02</span></button>
+      </nav>
+
+      <div class="speed-filter-row">
+        <label for="speedFilter">按时速筛选</label>
+        <select id="speedFilter" aria-label="按时速筛选线路">
+          <option value="all">全部速度</option>
+          <option value="350">≥ 350 km/h</option>
+          <option value="300">≥ 300 km/h</option>
+          <option value="250">≥ 250 km/h</option>
+          <option value="200">≥ 200 km/h</option>
+          <option value="160">≥ 160 km/h</option>
+          <option value="120">≥ 120 km/h</option>
+          <option value="custom" disabled>自定义</option>
+        </select>
+        <span class="speed-filter-count" id="speedFilterCount"></span>
+      </div>
+
+      <div class="tab-body" id="tabBody">
+        <section class="tab-panel active" id="tab-overview" role="tabpanel" aria-labelledby="tab-btn-overview">
+          <div class="section-head"><h2>图层与标注</h2><span>点击开关</span></div>
+          <div class="toggle-row">
+            <button class="toggle on" id="toggleLineLabels" aria-pressed="true"><span class="track"></span><span class="t-label">线路标签</span></button>
+            <button class="toggle on" id="toggleStations" aria-pressed="true"><span class="track"></span><span class="t-label">车站与站名</span></button>
+            <button class="toggle on" id="toggleJunctions" aria-pressed="true" title="显示不同线路在枢纽站的交汇连接"><span class="track"></span><span class="t-label">枢纽连接</span></button>
+          </div>
+          <div class="admin-bar">
+            <span class="admin-title">行政地名</span>
+            <button class="lvl on" data-level="province" aria-pressed="true" title="省级行政地名">省级</button>
+            <button class="lvl on" data-level="city" aria-pressed="true" title="地级行政地名">地级</button>
+            <button class="lvl" data-level="county" aria-pressed="false" title="县级行政地名">县级</button>
+            <span class="admin-sep" aria-hidden="true"></span>
+            <button class="border-btn on" id="toggleProvinceBorders" aria-pressed="true" title="显示或隐藏省界"><i aria-hidden="true"></i>省界</button>
+          </div>
+          <div class="admin-hint">行政地名按比例尺逐级显示，可独立开关</div>
+
+          <div class="section-head"><h2>运营速度</h2><span>点击色带筛选</span></div>
+          <div class="speed-list" id="speedLegend"></div>
+
+          <div class="section-head"><h2>国家干线</h2><span>快速定位</span></div>
+          <div class="featured-grid" id="featuredGrid"></div>
+
+          <div class="note"><b>关于这张图</b><br>仅绘制中国国家铁路网中办理旅客列车业务的线路，不含地铁、轻轨。线路几何来自 OpenStreetMap，持续开行状态与站点由 12306 图定数据校核；速度按线路最高运营等级着色，部分区段实际运行低于标注值。圆点按图定停靠频次分层，缩放后显示更多车站。</div>
+        </section>
+
+        <section class="tab-panel" id="tab-lines" role="tabpanel" aria-labelledby="tab-btn-lines">
+          <div class="list-tools">
+            <div class="list-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.8"></circle><path d="M15.6 15.6 21 21"></path></svg>
+              <input id="lineFilter" type="text" placeholder="筛选线路目录" autocomplete="off">
+            </div>
+            <div class="segmented" id="lineSegmented">
+              <button class="seg active" data-filter="all">全部</button>
+              <button class="seg" data-filter="hsr">高速 ≥250</button>
+              <button class="seg" data-filter="conv">普速</button>
+            </div>
+          </div>
+          <div class="line-list" id="lineList"></div>
+        </section>
+
+        <section class="tab-panel" id="tab-stations" role="tabpanel" aria-labelledby="tab-btn-stations">
+          <div class="section-head" style="margin-top:17px"><h2>全国枢纽</h2><span>按图定停靠频次</span></div>
+          <p class="hub-list-note">全国 3,300 座办理客运的车站已全部落图。缩放地图或使用搜索，可查看任意车站的线路、电报码与坐标。</p>
+          <div class="station-grid" id="hubList"></div>
+        </section>
+      </div>
+
+      <footer class="panel-footer">
+        <div class="footer-left">
+          <span>DATA SNAPSHOT · 2026.10.18</span>
+          <span class="footer-attr">© OSM · 12306 · 边界 GS(2024)0650</span>
+        </div>
+        <button id="aboutBtn2" aria-haspopup="dialog">数据与方法 ↗</button>
+      </footer>
+    </div>
+  </aside>
+
+  <button class="panel-reopen" id="panelReopen" type="button" aria-label="展开面板" aria-expanded="false" title="展开面板">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"></path></svg>
+    <span>展开</span>
+  </button>
+
+  <div class="map-top-actions" aria-label="地图工具">
+    <button class="map-action" id="zoomIn" title="放大" aria-label="放大"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="map-action" id="zoomOut" title="缩小" aria-label="缩小"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+    <button class="map-action" id="resetView" title="回到全国视图" aria-label="回到全国视图"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="3.2"/></svg></button>
+    <button class="map-action" id="fullscreenBtn" title="全屏显示" aria-label="全屏显示"><svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg></button>
+    <button class="map-action" id="aboutBtn" title="数据与方法" aria-label="数据与方法" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10.5v5.5M12 7.7v.1"/></svg></button>
+  </div>
+  <div class="north-mark" aria-hidden="true"><i class="arrow"></i><span>N</span></div>
+
+  <div id="mapFooter">
+    <div class="map-legend" id="mapLegend"></div>
+    <div class="map-credit">© OpenStreetMap · 12306 · 边界 GS(2024)0650</div>
+  </div>
+  <div class="map-attrib-mobile">© OSM · 12306 · GS(2024)0650</div>
+  <div id="inset" aria-hidden="true">
+    <div id="insetMap"></div>
+    <div class="inset-frame"></div>
+    <div class="inset-caption">南海诸岛</div>
+  </div>
+
+  <aside class="detail-panel" id="detailPanel" aria-live="polite">
+    <div class="detail-accent" id="detailAccent"></div>
+    <div class="detail-scroll" id="detailScroll">
+      <div class="detail-top">
+        <div>
+          <div class="detail-kicker" id="detailKicker">线路档案 / LINE</div>
+          <h2 id="detailName">—</h2>
+          <p class="detail-sub" id="detailSub"></p>
+        </div>
+        <button class="detail-close" id="detailClose" aria-label="关闭详情"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="detail-tags" id="detailTags"></div>
+      <div id="detailBody"></div>
+    </div>
+  </aside>
+
+  <div class="modal hidden" id="aboutModal" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <div class="modal-card">
+      <button class="modal-close" id="modalClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      <div class="modal-kicker">METHODOLOGY & SOURCES · 数据与方法</div>
+      <h2 id="aboutTitle">一张可核对的客运铁路图</h2>
+      <p class="modal-lede">本图只呈现中国国家铁路网中办理旅客列车业务的线路。它不把城市地铁、轻轨画进干线网络，也不以设计图纸替代正在运营的现实。线路、速度与车站被分开校核，再落到同一张地图上。</p>
+      <div class="modal-grid">
+        <section class="modal-sec">
+          <h3>01 / 线路范围</h3>
+          <p>保留国家铁路网中开行图定旅客列车的线路：高速客运专线、城际铁路，以及承担客运的客货共线铁路。剔除仅用于货运、机车车辆出入段、联络、疏解、折返的线位；不绘制地方地铁、轻轨、有轨电车。</p>
+        </section>
+        <section class="modal-sec">
+          <h3>02 / 速度标注</h3>
+          <p>按线路最高运营速度等级着色：350、300、250、200、160、140、120、80 km/h。主要干线依据国铁集团、国家铁路局公开技术标准与现行图定运行时分逐条校核；同一线路不同区段限速或低等级运行时，按全线最高等级标注并注明。</p>
+        </section>
+        <section class="modal-sec">
+          <h3>03 / 车站与线路</h3>
+          <p><span id="aboutStationCount">3,300</span> 座车站来自中国铁路 12306 办理客运业务的车站表；站名、电报码、所属城市与图定停靠频次均取自该表。线路与车站的归属由 12306 图定列车实际行经径路和 OpenStreetMap 线位联合判定，并对站场咽喉区作邻近度筛选；该关联用于空间表达，不等同于官方车站业务台账。</p>
+        </section>
+        <section class="modal-sec">
+          <h3>04 / 几何与边界</h3>
+          <p>线路几何取自 OpenStreetMap（2026-09-24 快照）。显示时按线路名合并全部同线 OSM 线位（含零客流但仍连续的区段），并对同线残端做短桥接，以修复沪春铁路等线路的断口；不同线路在同一办客站交汇时，以短连接线和节点衔接。连接线为制图综合，不代表实际道岔位置。国界、省界、海岸线与南海诸岛采用天地图国家标准矢量地图（审图号 GS(2024)0650，2025 版），仅作亚百米级抽稀；周边陆地、河流与湖泊采用 Natural Earth 1:10m，主要河流按等级加粗并标注中文名。地图仅作数据可视化，不作为测绘或工程依据。</p>
+        </section>
+        <section class="modal-sec full">
+          <h3>05 / 交叉核对</h3>
+          <div class="source-row"><b>全国规模</b><span>2025 年底全国铁路营业里程 16.5 万公里、高铁 5.04 万公里（国铁集团，2026-01 发布）。本图不重复绘制官方总里程，统计口径以图内实际可定位的客运线路为准。</span></div>
+          <div class="source-row"><b>列车与车站</b><span>中国铁路 12306 公开车站表、图定列车经停时刻与停靠频次，快照 2026-10-18。</span></div>
+          <div class="source-row"><b>线位与速度</b><span>OpenStreetMap 线位与国铁集团、国家铁路局、地方政府公开的线路技术标准；主要干线交叉比对现行运行图。</span></div>
+          <div class="source-row"><b>行政边界</b><span>天地图国家标准矢量地图 2025 版，审图号 GS(2024)0650（经 geojson.cn 公开接口获取）；国家、省、海岸线及南海诸岛均采用该套数据；成图仅描陆上国界与省界，海岸线不单独描边，由陆地/海面填色分界表达。</span></div>
+          <div class="source-row"><b>海岸线与水系</b><span>Natural Earth 1:10m 河流中心线与湖泊面；长江、黄河、珠江、黑龙江、雅鲁藏布江等主要河系加粗，并补充中文名标注。国界实线与省界虚线均采用天地图 GS(2024)0650 标准矢量；陆地填色以省界与 Natural Earth 1:10m land 求交，用于让长江口、钱塘江口、珠江口保持开口。宽河段另用 OpenStreetMap / OpenFreeMap 的 river 类水面多边形补足。</span></div>
+          <div class="source-row"><b>行政地名</b><span>DataV.GeoAtlas 省/地/县三级行政中心点；按比例尺逐级显示，可独立开关省级、地级、县级名称。</span></div>
+          <div class="source-row"><b>枢纽连接</b><span>对同一车站关联的不同线路，取各自距站最近的线位端点，以短连接线和节点衔接；用于制图清晰，不改变线路里程，也不代表实际道岔位置。</span></div>
+          <div class="source-row"><b>补入线路</b><span>三乐旅游铁路（三亚—崖州，200 km/h，2024-11-16 开通）与金温铁路老线（既有金温货线，仍办理少量普速客运）；线路根据 12306 图定经行与 OSM 线位补入。</span></div>
+          <div class="source-row"><b>线路数量</b><span>本图共识别 <span id="aboutLineCount">452</span> 条具备图定旅客列车业务的具名线路；近郊支线与极短联络线按运营意义归并或剔除，避免把站场内部线路误读为客运干线。</span></div>
+          <div class="source-row"><b>不含范围</b><span>城市轨道交通（地铁、轻轨、有轨电车）、台湾地区铁路，以及未进入国家铁路 12306 客运体系的线路。广深港高铁香港段属国家高铁通道，图中保留并注明由港铁公司运营。</span></div>
+        </section>
+        <section class="modal-sec full">
+          <h3>06 / 权威来源</h3>
+          <ul>
+            <li><a href="https://www.nra.gov.cn/xwzx/xwxx/xwlb/202506/t20250606_348989.shtml" target="_blank" rel="noopener">国家铁路局《2024年铁道统计公报》</a>：2024 年全国铁路营业里程 16.2 万公里、高铁 4.8 万公里。</li>
+            <li><a href="http://paper.people.com.cn/rmrbhwb/pad/content/202601/05/content_30129239.html" target="_blank" rel="noopener">人民日报海外版（2026-01-05）</a>：2025 年全国铁路营业里程 16.5 万公里、高铁超 5 万公里。</li>
+            <li><a href="https://www.12306.cn/" target="_blank" rel="noopener">中国铁路 12306</a>：车站、图定列车与经停时刻（2026-10-18 快照）。</li>
+            <li><a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap</a>：铁路线位、站场与部分车站坐标（ODbL 许可）。</li>
+            <li><a href="https://geojson.cn/data/atlas/tiandi" target="_blank" rel="noopener">天地图国家标准矢量地图</a>：审图号 GS(2024)0650 的国界、省界、海岸线与南海诸岛数据（2025 版）。</li>
+            <li><a href="https://news.cnr.cn/local/dftj/20241116/t20241116_526978066.shtml" target="_blank" rel="noopener">央广网（2024-11-16）</a>：三乐旅游铁路开通运营，全长约 108.8 公里，最高 200 km/h。</li>
+            <li><a href="https://datav.aliyun.com/portal/school/atlas/area_selector" target="_blank" rel="noopener">阿里云 DataV.GeoAtlas</a>：省、地、县三级行政地名点；<a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a>：周边陆地、河湖底图。</li>
+          </ul>
+        </section>
+      </div>
+      <div class="modal-foot"><span>本图用于学习、研究与展示 · 2026</span><span class="seal-small">铁路</span></div>
+    </div>
+  </div>
+
+  <div id="mapTip" class="map-tip" hidden></div>
+  <div id="toast" role="status"></div>
+</div>
+<script>
+/*__MAPLIBRE_JS__*/
+</script>
+<script>
+window.ATLAS = /*__ATLAS_DATA__*/;
+window.GLYPHS = /*__GLYPHS__*/;
+</script>
+<script>
+/*__ATLAS_JS__*/
+</script>
+</body>
+</html>

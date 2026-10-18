@@ -1,0 +1,12 @@
+.DS_Store
+.pydeps/
+.edge-*/
+*.log
+
+# Large intermediate/build data: the published single-file map embeds all of it.
+data/raw/
+data/out/
+data/admin/
+
+# Local working copy of the single-file map; index.html is the published copy.
+全国客运铁路地图.html
