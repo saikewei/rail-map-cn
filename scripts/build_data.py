@@ -22,6 +22,11 @@ OUT.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(ROOT / "src"))
 import line_meta
 
+LINE_WHITELIST = set()
+_wl = ROOT / "src" / "line_whitelist.json"
+if _wl.exists():
+    LINE_WHITELIST = set(json.loads(_wl.read_text(encoding="utf-8")))
+
 R = 6371008.8
 RAD = math.pi / 180
 
@@ -406,6 +411,8 @@ def main():
     # Line metadata
     line_objs = []
     for nm, es in groups.items():
+        if LINE_WHITELIST and nm not in LINE_WHITELIST:
+            continue
         total_len = sum(e["len"] for e in es)
         traffic = max(e["traffic"] for e in es)
         classes = set(e["cls"] for e in es)
@@ -548,19 +555,35 @@ def main():
             near = sorted((d, lid, nm) for lid, (d, nm) in best.items() if d <= 1800)[:2]
             assoc = near
         assoc.sort()
-        # avoid an implausible cluster of lines at a tiny halt: keep at most 7, closest first
+        # avoid an implausible cluster of lines at a tiny halt: keep at most 7 nearest
         assoc = assoc[:7]
         province = point_in_any_province(lon, lat, provinces)
+        service_names = sorted(nm for nm in allowed_by_station.get(name, set())
+                               if nm in name_to_line and min((d for lid, (d, n2) in best.items() if n2 == nm), default=1e9) <= 400)
+        geom_names = sorted({nm for lid, (d, nm) in best.items() if d <= 400 and nm in name_to_line})
+        # Full membership for line station lists: booked service + physical line
+        # within 650 m.  Keep the display list a little shorter.
+        all_names = []
+        for nm in [x[2] for x in assoc] + service_names + geom_names:
+            if nm not in all_names:
+                all_names.append(nm)
         lines_info = [{"name": nm, "d": round(d), "speed": name_to_line[nm]["speed"]} for d, lid, nm in assoc]
-        # sorted by speed and proximity for display
-        lines_info.sort(key=lambda x: (-x["speed"], x["d"]))
+        by_line = {x["name"]: x for x in lines_info}
+        for nm in all_names:
+            if nm in by_line:
+                continue
+            d = min((d for lid, (d, n2) in best.items() if n2 == nm), default=9999)
+            by_line[nm] = {"name": nm, "d": round(d), "speed": name_to_line[nm]["speed"]}
+        lines_info = sorted(by_line.values(), key=lambda x: (-x["speed"], x["d"]))[:12]
         st_obj = {
             "name": name, "city": city, "province": province, "lon": round(lon, 5), "lat": round(lat, 5),
             "tele": tele, "py": py, "abbr": abbr, "rank": rank, "lines": lines_info,
+            "serviceLines": service_names, "geomLines": geom_names,
         }
         stations.append(st_obj)
-        for li in lines_info:
-            station_line_map[li["name"]].append((st_obj, li["d"]))
+        for nm in all_names:
+            d = min((d for lid, (d, n2) in best.items() if n2 == nm), default=9999)
+            station_line_map[nm].append((st_obj, d))
 
     # Attach line stats / station lists
     for L in line_objs:
@@ -618,7 +641,9 @@ def main():
 
     # Clean station -> line references and recompute line station lists
     for stn in stations:
-        stn["lines"] = [x for x in stn["lines"] if x["name"] in keep_names][:7]
+        stn["lines"] = [x for x in stn["lines"] if x["name"] in keep_names][:12]
+        stn["serviceLines"] = [x for x in stn.get("serviceLines", []) if x in keep_names]
+        stn["geomLines"] = [x for x in stn.get("geomLines", []) if x in keep_names]
     for L in line_objs:
         entries = []
         for stn in stations:

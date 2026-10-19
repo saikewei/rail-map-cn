@@ -200,11 +200,19 @@ def main():
             labels['features'].append(anc)
         return L
 
-    sanyue_L = add_line(
+    for _nm in ('三乐旅游铁路', '金温铁路老线'):
+        _old = line_by_name.pop(_nm, None)
+        if _old:
+            lines[:] = [x for x in lines if x['name'] != _nm]
+            rail['features'] = [f for f in rail['features'] if f.get('properties', {}).get('n') != _nm]
+            labels['features'] = [f for f in labels['features'] if f.get('properties', {}).get('n') != _nm]
+            for _st in stations:
+                _st['lines'] = [x for x in _st.get('lines', []) if x.get('name') != _nm]
+    sanyue_L = line_by_name.get('三乐旅游铁路') or add_line(
         '三乐旅游铁路', 200, '旅游铁路',
         '利用海南西环高铁及既有西环铁路三亚—崖州段开行的公交化旅游列车，2024-11-16 开通，最高运营 200 km/h；现图定办客站为三亚、凤凰机场、天涯海角、南山北、崖州湾、崖州。',
         sanyue_lines, ['三亚', '凤凰机场', '天涯海角', '南山北', '崖州湾', '崖州'], 2, traffic=30)
-    jw_L = add_line(
+    jw_L = line_by_name.get('金温铁路老线') or add_line(
         '金温铁路老线', 80, '客货共线铁路',
         '即金温货线，既有金温铁路；仍办理少量普速旅客列车，按既有线 80 km/h 级标尺标注。',
         jw_lines, ['金华南', '武义', '永康南', '缙云', '丽水', '青田', '温州'], 3, traffic=25)
@@ -248,10 +256,56 @@ def main():
     for s in stations:
         if s.get('rank', 0) <= 0:
             continue
-        for li in s.get('lines', []):
-            nm = li.get('name')
+        names = set(s.get('serviceLines', [])) | set(s.get('geomLines', []))
+        names.update(li.get('name') for li in s.get('lines', []))
+        for nm in names:
             if nm in line_by_name:
                 line_stations[nm][s['name']] = s
+
+    # Terminal stations: a line's main geometry occasionally stops a few km
+    # short of its terminal (e.g. 京广 at 北京西).  Attach the nearest 12306
+    # station to each end of the longest component when it is a close match.
+    feats_by_line = collections.defaultdict(list)
+    for f in rail['features']:
+        feats_by_line[f['properties'].get('k')].append(f)
+    for L in lines:
+        feats = feats_by_line.get(L['id'], [])
+        comps = []
+        for f in feats:
+            for line in f['geometry']['coordinates']:
+                ln = sum(hav(line[i - 1], line[i]) for i in range(1, len(line)))
+                if len(line) >= 2:
+                    comps.append((ln, line))
+        if not comps:
+            continue
+        ends = []
+        for ln, line in comps:
+            ends.extend([line[0], line[-1]])
+        if not ends:
+            continue
+        # The farthest pair is the main terminal axis; avoids adding every
+        # branch-end station around a large hub.
+        pair = (ends[0], ends[0]); best = -1
+        for i in range(len(ends)):
+            for j in range(i + 1, len(ends)):
+                d = hav(ends[i], ends[j])
+                if d > best:
+                    best = d; pair = (ends[i], ends[j])
+        for end in pair:
+            near = None
+            for st in stations:
+                if st.get('rank', 0) < 50 or st['name'] in line_stations.get(L['name'], {}):
+                    continue
+                d = hav(end, [st['lon'], st['lat']])
+                if d <= 15000 and (near is None or d < near[0]):
+                    near = (d, st)
+            if near:
+                d, st = near
+                line_stations[L['name']][st['name']] = st
+                if not any(x.get('name') == L['name'] for x in st.get('lines', [])):
+                    st.setdefault('lines', []).append({'name': L['name'], 'd': round(d), 'speed': L['speed']})
+                    st['lines'].sort(key=lambda x: (-x.get('speed', 0), x.get('d', 1e9)))
+                    st['lines'] = st['lines'][:12]
 
     # Collect train stop sequences per line.  They are the strongest evidence
     # for along-route order, and naturally contain only 12306 passenger stops.
@@ -265,8 +319,9 @@ def main():
             st = by_name.get(nm)
             if not st:
                 continue
-            for li in st.get('lines', []):
-                ln = li.get('name')
+            names = set(st.get('serviceLines', [])) | set(st.get('geomLines', []))
+            names.update(li.get('name') for li in st.get('lines', []))
+            for ln in names:
                 if ln not in line_stations or nm not in line_stations[ln]:
                     continue
                 if nm not in seen[ln]:
@@ -389,6 +444,64 @@ def main():
         L['stations'] = [snapshot(s) for s in ordered]
         L['stationCount'] = len(ordered)
         L['cities'] = len({s.get('city') for s in ordered if s.get('city')})
+
+    # Manual endpoint/completeness corrections for legacy lines whose OSM
+    # geometry is split or stops short of the terminal.
+    manual_ends = {
+        '京包铁路': ['北京北', '清河'],
+        '麻武铁路': ['武昌'],
+        '广大铁路': ['广通北', '楚雄'],
+    }
+    manual_remove = {
+        '京包铁路': ['大同南'],
+        '京包客专': ['北京西'],
+        '京沪铁路': ['北京北'],
+    }
+    for nm, names in manual_ends.items():
+        L = line_by_name.get(nm)
+        if not L: continue
+        for stn_name in names:
+            st = by_name.get(stn_name)
+            if not st: continue
+            line_stations[nm][stn_name] = st
+            if not any(x.get('name') == nm for x in st.get('lines', [])):
+                st.setdefault('lines', []).append({'name': nm, 'd': 0, 'speed': L['speed']})
+                st['lines'].sort(key=lambda x: (-x.get('speed', 0), x.get('d', 1e9)))
+                st['lines'] = st['lines'][:12]
+    for nm, names in manual_remove.items():
+        L = line_by_name.get(nm)
+        if not L: continue
+        for stn_name in names:
+            line_stations.get(nm, {}).pop(stn_name, None)
+            st = by_name.get(stn_name)
+            if st: st['lines'] = [x for x in st.get('lines', []) if x.get('name') != nm]
+    # Recompute lists changed by manual endpoints/removals.
+    for nm in set(manual_ends) | set(manual_remove):
+        L = line_by_name.get(nm)
+        if not L: continue
+        sts = list(line_stations.get(nm, {}).values())
+        ordered = order_for(L, sts)
+        L['stations'] = [snapshot(s) for s in ordered]
+        L['stationCount'] = len(ordered)
+        L['cities'] = len({s.get('city') for s in ordered if s.get('city')})
+    manual_orders = {
+        '京包铁路': lambda sts: ['北京北', '清河'] + [s['name'] for s in sts if s['name'] not in ('北京北', '清河')],
+        '麻武铁路': lambda sts: ['麻城', '红安西', '武昌'],
+        '广大铁路': lambda sts: ['广通北', '楚雄', '云南驿', '祥云', '大理'],
+    }
+    for nm, make_order in manual_orders.items():
+        L = line_by_name.get(nm)
+        if not L: continue
+        have = {s['name']: s for s in L['stations']}
+        order = make_order(L['stations'])
+        if all(x in have for x in order):
+            L['stations'] = [have[x] for x in order]
+            L['stationCount'] = len(order)
+            L['cities'] = len({s.get('city') for s in L['stations'] if s.get('city')})
+    if '京包铁路' in line_by_name:
+        line_by_name['京包铁路']['note'] = '北京北—沙城段与京包客专共通道；本图按京包线历史起终点补北京北、清河。当前普速客车主要运行呼和浩特—沙城段。'
+    if '京包客专' in line_by_name:
+        line_by_name['京包客专']['note'] = '北京北—包头高速客运专线；北京西不属本线，已剔除。'
 
     # Specific unambiguous orders for the new services
     sanyue_L['stations'] = [snapshot(by_name[n]) for n in ['三亚', '凤凰机场', '天涯海角', '南山北', '崖州湾', '崖州']]
