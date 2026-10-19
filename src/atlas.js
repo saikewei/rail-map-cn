@@ -375,6 +375,10 @@ function selectLine(id, opts = {}) {
   if (opts.fit !== false) fitLine(line, true);
   scheduleLineLabels();
 }
+function detailPadRight() {
+  const w = $('#detailPanel')?.getBoundingClientRect().width || 420;
+  return Math.round(w + 30);
+}
 function selectStation(id, opts = {}) {
   const s = stationById.get(Number(id));
   $('#mapTip').hidden = true;
@@ -394,7 +398,7 @@ function selectStation(id, opts = {}) {
   if (opts.fit !== false && mapReady) {
     map.flyTo({
       center: [s.lon, s.lat], zoom: Math.max(10.8, Math.min(map.getZoom(), 12.4)),
-      speed: 1.1, curve: 1.35, duration: 1200, padding: isNarrow() ? { bottom: Math.max(280, window.innerHeight * .47), top: 20 } : { left: 426, right: 414, top: 20, bottom: 20 },
+      speed: 1.1, curve: 1.35, duration: 1200, padding: isNarrow() ? { bottom: Math.max(280, window.innerHeight * .47), top: 20 } : { left: 426, right: detailPadRight(), top: 20, bottom: 20 },
     });
   }
 }
@@ -423,7 +427,7 @@ function renderLineDetail(line) {
     <span class="tag">${fmt(line.stationCount)} 站</span>`;
   const stationsList = (line.stations || []).filter(s => Number(s.rank) > 0);
   const stationRows = stationsList.length
-    ? stationsList.map((s, i) => `<button class="station-row" data-station-id="${s.id}"><span class="ss-index">${String(i + 1).padStart(2, '0')}</span><span class="ss-name">${esc(s.name)}</span><span class="ss-city">${esc(s.city || '')}</span><span class="ss-rank">${fmt(s.rank)} 列</span></button>`).join('')
+    ? stationsList.map((s, i) => `<button class="station-row" data-station-id="${s.id}"><span class="ss-index">${String(i + 1).padStart(2, '0')}</span><span class="ss-main"><span class="ss-name">${esc(s.name)}</span><span class="ss-city">${esc(s.city || '')}</span></span><span class="ss-rank">${fmt(s.rank)}<small>列</small></span></button>`).join('')
     : `<div class="station-no-data">这条线路暂无可检索的办客车站。</div>`;
   const note = line.note || '按该线路最高运营速度等级标注；具体区段的运行速度受线路条件、停站与运行图影响，可能低于标注值。';
   $('#detailBody').innerHTML = `

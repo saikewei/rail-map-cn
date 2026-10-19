@@ -437,6 +437,55 @@ body.panel-collapsed .map-top-actions{right:20px}
   .speed-filter-row label{display:none}
 }
 
+
+/* ---------------- line detail layout ---------------- */
+:root{--detail-w:420px}
+@media (max-width:1240px){:root{--detail-w:380px}}
+@media (max-width:1020px){:root{--detail-w:356px}}
+@media (max-width:880px){:root{--detail-w:calc(100vw - 24px)}}
+.detail-panel{width:var(--detail-w)}
+.detail-scroll{padding:24px 27px 26px}
+.detail-panel h2{font-size:32px}
+.detail-sub{font-size:11px}
+.detail-tags{margin-top:16px;gap:6px}
+.tag{font-size:9px;padding:4px 9px}
+.tag.speed{font-size:9px}
+.tag.speed b{font-size:12px}
+.detail-note{font-size:10.5px;line-height:1.75;padding:12px 13px}
+.detail-section-title{margin:22px 0 9px}
+.detail-section-title h3{font-size:15px}
+.detail-section-title span{font-size:8px}
+.station-list-scroll{max-height:360px;padding-right:6px;margin-bottom:8px;border-top:1px solid var(--hairline)}
+.station-row{grid-template-columns:25px minmax(0,1fr) auto;gap:9px;padding:8px 3px;transition:background .15s,color .15s}
+.station-row:hover{background:rgba(173,58,40,.045)}
+.station-row .ss-index{font-size:8px;color:var(--ink-3);align-self:start;margin-top:4px}
+.station-row .ss-main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.station-row .ss-name{font-size:13px;line-height:1.25;letter-spacing:.01em;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.station-row .ss-city{font-size:9.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.station-row .ss-rank{font-family:var(--mono);text-align:right;white-space:nowrap;color:var(--ink-3);line-height:1.1;font-size:9px;min-width:42px}
+.station-row .ss-rank small{font-size:7.5px;margin-left:1px}
+.station-list-note{font-size:8.5px;line-height:1.65;margin-bottom:18px}
+.detail-meta{gap:9px;margin-top:14px}
+.meta-row{font-size:10px;padding-bottom:7px}
+.detail-source{font-size:9.5px;line-height:1.75}
+.detail-action{font-size:10px;height:38px}
+@media (max-width:1240px){
+  .detail-scroll{padding:22px 23px 24px}
+  .detail-panel h2{font-size:29px}
+  .station-list-scroll{max-height:300px}
+  .station-row .ss-name{font-size:12.5px}
+}
+@media (max-width:1020px){
+  .station-row .ss-name{font-size:12px}
+  .station-row .ss-city{font-size:9px}
+}
+@media (max-width:880px){
+  .detail-scroll{padding:20px 20px 22px}
+  .detail-panel h2{font-size:27px}
+  .station-list-scroll{max-height:38vh}
+  .station-row .ss-name{font-size:13px}
+}
+
 </style>
 </head>
 <body>
@@ -1100,6 +1149,10 @@ function selectLine(id, opts = {}) {
   if (opts.fit !== false) fitLine(line, true);
   scheduleLineLabels();
 }
+function detailPadRight() {
+  const w = $('#detailPanel')?.getBoundingClientRect().width || 420;
+  return Math.round(w + 30);
+}
 function selectStation(id, opts = {}) {
   const s = stationById.get(Number(id));
   $('#mapTip').hidden = true;
@@ -1119,7 +1172,7 @@ function selectStation(id, opts = {}) {
   if (opts.fit !== false && mapReady) {
     map.flyTo({
       center: [s.lon, s.lat], zoom: Math.max(10.8, Math.min(map.getZoom(), 12.4)),
-      speed: 1.1, curve: 1.35, duration: 1200, padding: isNarrow() ? { bottom: Math.max(280, window.innerHeight * .47), top: 20 } : { left: 426, right: 414, top: 20, bottom: 20 },
+      speed: 1.1, curve: 1.35, duration: 1200, padding: isNarrow() ? { bottom: Math.max(280, window.innerHeight * .47), top: 20 } : { left: 426, right: detailPadRight(), top: 20, bottom: 20 },
     });
   }
 }
@@ -1148,7 +1201,7 @@ function renderLineDetail(line) {
     <span class="tag">${fmt(line.stationCount)} 站</span>`;
   const stationsList = (line.stations || []).filter(s => Number(s.rank) > 0);
   const stationRows = stationsList.length
-    ? stationsList.map((s, i) => `<button class="station-row" data-station-id="${s.id}"><span class="ss-index">${String(i + 1).padStart(2, '0')}</span><span class="ss-name">${esc(s.name)}</span><span class="ss-city">${esc(s.city || '')}</span><span class="ss-rank">${fmt(s.rank)} 列</span></button>`).join('')
+    ? stationsList.map((s, i) => `<button class="station-row" data-station-id="${s.id}"><span class="ss-index">${String(i + 1).padStart(2, '0')}</span><span class="ss-main"><span class="ss-name">${esc(s.name)}</span><span class="ss-city">${esc(s.city || '')}</span></span><span class="ss-rank">${fmt(s.rank)}<small>列</small></span></button>`).join('')
     : `<div class="station-no-data">这条线路暂无可检索的办客车站。</div>`;
   const note = line.note || '按该线路最高运营速度等级标注；具体区段的运行速度受线路条件、停站与运行图影响，可能低于标注值。';
   $('#detailBody').innerHTML = `

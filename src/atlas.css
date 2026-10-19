@@ -424,3 +424,52 @@ body.panel-collapsed .map-top-actions{right:20px}
   .speed-filter-row{margin-left:19px;margin-right:19px}
   .speed-filter-row label{display:none}
 }
+
+
+/* ---------------- line detail layout ---------------- */
+:root{--detail-w:420px}
+@media (max-width:1240px){:root{--detail-w:380px}}
+@media (max-width:1020px){:root{--detail-w:356px}}
+@media (max-width:880px){:root{--detail-w:calc(100vw - 24px)}}
+.detail-panel{width:var(--detail-w)}
+.detail-scroll{padding:24px 27px 26px}
+.detail-panel h2{font-size:32px}
+.detail-sub{font-size:11px}
+.detail-tags{margin-top:16px;gap:6px}
+.tag{font-size:9px;padding:4px 9px}
+.tag.speed{font-size:9px}
+.tag.speed b{font-size:12px}
+.detail-note{font-size:10.5px;line-height:1.75;padding:12px 13px}
+.detail-section-title{margin:22px 0 9px}
+.detail-section-title h3{font-size:15px}
+.detail-section-title span{font-size:8px}
+.station-list-scroll{max-height:360px;padding-right:6px;margin-bottom:8px;border-top:1px solid var(--hairline)}
+.station-row{grid-template-columns:25px minmax(0,1fr) auto;gap:9px;padding:8px 3px;transition:background .15s,color .15s}
+.station-row:hover{background:rgba(173,58,40,.045)}
+.station-row .ss-index{font-size:8px;color:var(--ink-3);align-self:start;margin-top:4px}
+.station-row .ss-main{min-width:0;display:flex;flex-direction:column;gap:2px}
+.station-row .ss-name{font-size:13px;line-height:1.25;letter-spacing:.01em;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.station-row .ss-city{font-size:9.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.station-row .ss-rank{font-family:var(--mono);text-align:right;white-space:nowrap;color:var(--ink-3);line-height:1.1;font-size:9px;min-width:42px}
+.station-row .ss-rank small{font-size:7.5px;margin-left:1px}
+.station-list-note{font-size:8.5px;line-height:1.65;margin-bottom:18px}
+.detail-meta{gap:9px;margin-top:14px}
+.meta-row{font-size:10px;padding-bottom:7px}
+.detail-source{font-size:9.5px;line-height:1.75}
+.detail-action{font-size:10px;height:38px}
+@media (max-width:1240px){
+  .detail-scroll{padding:22px 23px 24px}
+  .detail-panel h2{font-size:29px}
+  .station-list-scroll{max-height:300px}
+  .station-row .ss-name{font-size:12.5px}
+}
+@media (max-width:1020px){
+  .station-row .ss-name{font-size:12px}
+  .station-row .ss-city{font-size:9px}
+}
+@media (max-width:880px){
+  .detail-scroll{padding:20px 20px 22px}
+  .detail-panel h2{font-size:27px}
+  .station-list-scroll{max-height:38vh}
+  .station-row .ss-name{font-size:13px}
+}
