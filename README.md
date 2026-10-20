@@ -3,9 +3,10 @@
 一个可离线打开的中国国家铁路客运线路交互地图。单文件 HTML，无外部依赖、无需 API Key。
 
 **在线预览：** <https://saikewei.github.io/rail-map-cn/>  
+**交互地图：** <https://saikewei.github.io/rail-map-cn/map.html>  
 **GitHub：** <https://github.com/saikewei/rail-map-cn>
 
-**打开方式：** 访问上面的 GitHub Pages 地址，或下载仓库中的 `index.html` 后在浏览器打开。已在 Chrome / Edge 中测试通过 `file://` 直接打开。
+**打开方式：** 访问 GitHub Pages 首页后点击「打开交互地图」，或直接打开 `map.html`。也可下载 `全国客运铁路地图.html` 后在浏览器打开；已在 Chrome / Edge 中测试通过 `file://` 直接打开。
 
 ---
 
@@ -60,16 +61,19 @@
 
 ## 文件
 
-- `index.html` — 最终单文件地图，也是 GitHub Pages 入口。
+- `index.html` — 轻量 SEO 落地页与 GitHub Pages 入口，便于搜索引擎收录。
+- `map.html` — 最终单文件交互地图；`全国客运铁路地图.html` 为同一文件的本地副本。
 - `preview/` — 桌面总览、西藏边界、长江口、钱塘江、珠江口、黄河、自然水系、沪春铁路/上海南枢纽、线路详情、车站详情、移动端总览。
 - `data/admin/` — 边界与行政地名原始数据；`scripts/build_admin_basemap.py` 生成精确行政底图。
 - `src/`、`scripts/`、`data/` — 数据处理、样式和构建脚本。
 
 ## GitHub Pages
 
-仓库通过 GitHub Pages 从 `main` 分支根目录发布，入口文件为 `index.html`；`.nojekyll` 用于关闭 Jekyll 处理。页面为单文件、全部资源内联，不依赖外部 CDN。
+仓库通过 GitHub Pages 从 `main` 分支根目录发布：`index.html` 是轻量落地页，`map.html` 是交互地图；`.nojekyll` 用于关闭 Jekyll 处理。地图为单文件、全部资源内联，不依赖外部 CDN。
 
-在线地址：<https://saikewei.github.io/rail-map-cn/>
+首页：<https://saikewei.github.io/rail-map-cn/>  
+地图：<https://saikewei.github.io/rail-map-cn/map.html>  
+站点地图：<https://saikewei.github.io/rail-map-cn/sitemap.xml>
 
 仓库只提交页面、源码、样式和预览图；`data/raw/`、`data/out/`、`data/admin/` 等大体积中间数据未提交，可按下方脚本从原始数据重建。
 

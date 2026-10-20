@@ -48,6 +48,7 @@ for token, content in [
     ("/*__GLYPHS__*/", glyph_json),
 ]:
     html = html.replace(token, content, 1)
-for name in ("index.html", "全国客运铁路地图.html"):
+for name in ("map.html", "全国客运铁路地图.html"):
     (ROOT / name).write_text(html, encoding="utf-8")
+(ROOT / "index.html").write_text((ROOT / "src" / "landing.html").read_text(encoding="utf-8"), encoding="utf-8")
 print("built", len(html.encode("utf-8")) / 1024 / 1024, "MB")

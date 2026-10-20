@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://saikewei.github.io/rail-map-cn/sitemap.xml
